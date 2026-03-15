@@ -17,6 +17,8 @@ from app.api.health import router as health_router
 from app.api.datasets import router as datasets_router
 from app.api.models import router as models_router
 from app.api.ai_routes import router as ai_router
+from app.api.reporting import router as reporting_router
+from app.api.auth import router as auth_router
 
 
 # ── Lifespan (startup / shutdown) ───────────────────────────────
@@ -57,6 +59,8 @@ app.include_router(health_router)
 app.include_router(datasets_router)
 app.include_router(models_router)
 app.include_router(ai_router)
+app.include_router(reporting_router)
+app.include_router(auth_router)
 
 
 @app.get("/", tags=["Root"])
