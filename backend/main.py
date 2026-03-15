@@ -16,6 +16,7 @@ from app.core.logging import setup_logging
 from app.api.health import router as health_router
 from app.api.datasets import router as datasets_router
 from app.api.models import router as models_router
+from app.api.ai_routes import router as ai_router
 
 
 # ── Lifespan (startup / shutdown) ───────────────────────────────
@@ -36,7 +37,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="AI-powered pothole detection backend — Phase 1",
+    description="AI-powered pothole detection backend — Phase 2 (ML Pipeline)",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -55,6 +56,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(datasets_router)
 app.include_router(models_router)
+app.include_router(ai_router)
 
 
 @app.get("/", tags=["Root"])

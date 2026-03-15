@@ -18,11 +18,15 @@ router = APIRouter(prefix="/api/models", tags=["Models"])
 
 # ── Pydantic schemas ────────────────────────────────────────────
 class TrainingRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
     dataset_id: int
     model_type: str = "yolo"  # yolo | resnet | sklearn
 
 
 class TrainingRunResponse(BaseModel):
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
+
     id: int
     dataset_id: int
     model_type: str
@@ -33,15 +37,17 @@ class TrainingRunResponse(BaseModel):
     completed_at: Optional[str]
     created_at: Optional[str]
 
-    model_config = {"from_attributes": True}
-
 
 class InferenceRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
     model_type: str = "yolo"
     image_path: str
 
 
 class InferenceResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
     model_type: str
     image_path: str
     predictions: list

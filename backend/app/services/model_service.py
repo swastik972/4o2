@@ -1,5 +1,5 @@
 """
-Model service — orchestrates model training and inference.
+Model service — orchestrates model training and inference (Phase 2).
 """
 
 import json
@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.dataset import Dataset
 from app.models.training_run import TrainingRun
+from app.services.inference import InferenceService
+from app.services.model_versioning import ModelVersioning
 
 
 class ModelService:
@@ -26,8 +28,11 @@ class ModelService:
         self,
         dataset_id: int,
         model_type: str,
+        epochs: int = 10,
+        learning_rate: float = 1e-3,
+        batch_size: int = 16,
     ) -> TrainingRun:
-        """Create a training run record and (in prod) dispatch to Celery."""
+        """Create a training run record and dispatch to Celery worker."""
         # Verify dataset exists
         dataset = self.db.query(Dataset).filter(Dataset.id == dataset_id).first()
         if not dataset:
@@ -49,9 +54,22 @@ class ModelService:
             dataset.name,
         )
 
-        # TODO: dispatch to Celery in production
-        # from app.workers.tasks import train_model_task
-        # train_model_task.delay(run.id)
+        # Dispatch to Celery worker
+        try:
+            from app.workers.tasks import train_model_task
+            train_model_task.delay(
+                run.id,
+                epochs=epochs,
+                learning_rate=learning_rate,
+                batch_size=batch_size,
+            )
+            logger.info("Training run #{} dispatched to Celery", run.id)
+        except Exception as e:
+            logger.warning(
+                "Could not dispatch to Celery (worker may be offline): {}. "
+                "Run will stay in 'pending' status.",
+                e,
+            )
 
         return run
 
@@ -89,33 +107,47 @@ class ModelService:
         image_path: str,
     ) -> Dict[str, Any]:
         """
-        Run inference on a single image.
-
-        This is a placeholder — in Phase 2 it will load a trained model
-        and return real predictions.
+        Run inference on a single image using the latest trained model.
         """
         path = Path(image_path)
         if not path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
 
-        logger.info("Running inference ({}) on {}", model_type, path.name)
-
-        # Placeholder predictions
-        predictions = [
-            {
-                "class": "pothole",
-                "confidence": 0.0,
-                "bbox": [0, 0, 0, 0],
-                "note": "placeholder — no model loaded yet",
+        try:
+            service = InferenceService()
+            prediction = service.predict(str(path))
+            return {
+                "model_type": model_type,
+                "image_path": str(path),
+                "predictions": [
+                    {
+                        "class": prediction["class_name"],
+                        "confidence": prediction["confidence"],
+                        "label": prediction["label"],
+                    }
+                ],
+                "message": f"Inference completed using model v{prediction['model_version']}",
             }
-        ]
+        except FileNotFoundError:
+            # No trained model available yet
+            return {
+                "model_type": model_type,
+                "image_path": str(path),
+                "predictions": [
+                    {
+                        "class": "unknown",
+                        "confidence": 0.0,
+                        "note": "No trained model available. Run training first.",
+                    }
+                ],
+                "message": "No trained model found — please train a model first.",
+            }
 
-        return {
-            "model_type": model_type,
-            "image_path": str(path),
-            "predictions": predictions,
-            "message": "Placeholder inference — model integration pending (Phase 2)",
-        }
+    # ── Model Versions ──────────────────────────────────────────
+    def get_model_versions(self) -> list:
+        """List all saved model versions with metadata."""
+        versioning = ModelVersioning()
+        return versioning.list_versions()
 
     # ── Utilities ───────────────────────────────────────────────
     def list_saved_models(self) -> list:
