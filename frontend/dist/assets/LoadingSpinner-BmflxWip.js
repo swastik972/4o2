@@ -1,0 +1,1 @@
+import{j as e}from"./index-CA3gNgPI.js";const t=({size:r="md"})=>{const s={sm:"h-4 w-4 border-2",md:"h-8 w-8 border-2",lg:"h-12 w-12 border-4"};return e.jsx("div",{className:"flex justify-center items-center p-4",children:e.jsx("div",{className:`${s[r]} animate-spin rounded-full border-[#1B4FD8] border-t-transparent`})})};export{t as L};
